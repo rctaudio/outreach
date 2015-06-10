@@ -2,60 +2,121 @@
 //run standard Firmata script on arduino FIRST 
 // then run this script to gather data
 
-
-
 import processing.serial.*;
 import cc.arduino.*;
 
-int sensor = 0;
-int read = 0;
-int width =0;
-int height =0;
-int xPos = 0;
-int[] yPos;
+int sensor = 0;      // pin number for sensor data
+int read = 0;        // value that is read from sensor
+int width =0;        // global variable for storing screen width.  
+int height =0;       // global variable for storing screen height.
+int xPos = 0;        // global variable for current x position for drawing graph
+int[] yPos;          // global array for storing corresponding y value of graph
 
 
-Arduino arduino;
+Arduino arduino;     // create new arduino object, for reading analog data.
 
 void setup()
 {
-  arduino = new Arduino(this , Arduino.list()[0], 57600);
-  arduino.pinMode(sensor, Arduino.INPUT);
-  width = displayWidth -50;
-  height = displayHeight -100;
-  size(width,height);
-  frameRate(30);
-  stroke(255);
-  yPos = new int[5000];
+  initArduino();
+  initScreen();
+  
+  yPos = new int[displayWidth];  //create an array for each xvalue of screen
 }
 
 void draw()
 {
 
-  //read data and prepare circle
+  //clear screen to allow new data to be drawn
   background(0);
-  read = 1024 - arduino.analogRead(sensor);
-//  println(read);
+  
+  // read analog sensor and flip scale
+  read = (1024 - arduino.analogRead(sensor))/2;
+  
+  drawEllipse();
+  drawText();  
+  drawGraph();
+} // end of draw()
+
+//--------------------------------//
+//                                //
+//  initalize screen              //
+// should be called in setup      //
+//                                //
+//--------------------------------//
+
+void initScreen()
+{
+  width = displayWidth -50;
+  height = displayHeight -100;
+  size(width,height);
+  frameRate(30);
+  stroke(255);
+
+}// end of initalize screen
+
+//--------------------------------//
+//                                //
+//  initalize arduino             //
+//  should be called in setup     //
+//                                //
+//--------------------------------//
+
+void initArduino()
+{
+  arduino = new Arduino(this , Arduino.list()[0], 57600); 
+  arduino.pinMode(sensor, Arduino.INPUT);
+}// end of initArduino
+
+//--------------------------------//
+//                                //
+//             drawText           //
+//  should be called when ever    //
+//  you want to display data      //
+//  as text                       //
+//--------------------------------//
+
+void drawText()
+{
+  textSize(32);
+  text("Analog Data: " + read,50,50);
+  
+} // end of drawText
+
+//--------------------------------//
+//                                //
+//       drawEllipse()            //
+//  should be called when ever    //
+//  you want to display data as   //
+//  an ellipse                    //
+//--------------------------------//
+
+void drawEllipse()
+{
   ellipseMode(CENTER);
   fill(255);
-  ellipse(width/2,300,read/2, read/2);
+  ellipse(width/2,300,read, read);
   
-  // draw text
-  textSize(32);
-  text("Analog Data: " + read/2,50,50);
-  
-  
-  
-  //draw graph
-  noFill();
+}// end of drawEllipse()
 
-  yPos[xPos] = height - read/2;
+//--------------------------------//
+//                                //
+//       drawGraph()              //
+//  should be called when ever    //
+//  you want to display data as   //
+//  a graph                       //
+//--------------------------------//
+
+void drawGraph()
+{
+  noFill();
+  yPos[xPos] = height - read;
   beginShape();
   curveVertex(0,yPos[0]);
   for (int i = 0; i< xPos; i++)
   {
     curveVertex(i,yPos[i]);
-  }
+  }// end of for
+  
   curveVertex(xPos, yPos[xPos]);
   endShape();
 
@@ -64,9 +125,9 @@ void draw()
    {
      xPos = 0;
      background(0); 
-   } 
+   } // end of if
    else
    {
      xPos++;
-   }
-}
+   } // end of else
+}// end of drawGraph()
