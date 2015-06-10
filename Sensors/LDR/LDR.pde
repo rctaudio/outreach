@@ -34,5 +34,7 @@ void draw()
   println(read);
   ellipseMode(CENTER);
   ellipse(width/2,height/2,read, read);
+  textSize(32);
+  text("Analog Data: " + read,50,50);
 
 }
