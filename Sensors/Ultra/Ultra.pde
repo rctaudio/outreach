@@ -1,6 +1,22 @@
-// Setup sensor on same ANALOG pin as defined below.
-//run standard Firmata script on arduino FIRST 
-// then run this script to gather data
+/*----------------------------------------------------
+          HARDWARE SETUP
+RED    = 5v
+BLACK  = GND 
+WHITE  = Echo      -  Digital pin 4
+GREEN  = Trigger   -  Digital pin 2    
+
+          SOFTWARE SETUP
+
+1.  open ultra.ino and upload to arduino
+2.  open processing and click play
+3.  test output and make sure it changes.  If it does not change you will need to change the variable CHANGEME
+    
+----------------------------------------------------
+*/
+
+
+
+int CHANGEME = 0;  // If no output change this to 1....2...3... in that order.
 
 import processing.serial.*;
 import cc.arduino.*;
@@ -39,7 +55,7 @@ void draw()
   background(0);
   
   // read analog sensor and flip scale
-//  read = (1024 - arduino.analogRead(sensor))/2;
+  //  read = (1024 - arduino.analogRead(sensor))/2;
   if (myPort.available() > 0)
   {
     read = Float.parseFloat(myPort.readString());
@@ -48,34 +64,10 @@ void draw()
       println(read);
       if (read ==0)
       read = 1023;
-  }
+  } // end of read
   
   long duration;
   float inches, cm;
- 
-  // The sensor is triggered by a HIGH pulse of 10 or more microseconds.
-  // Give a short LOW pulse beforehand to ensure a clean HIGH pulse:
-  
-//  arduino.digitalWrite(trigPin, Arduino.LOW);
-//  java.util.concurrent.TimeUnit.MICROSECONDS.sleep(2);
-//  Arduino.delayMicroseconds(2);
-//  arduino.digitalWrite(trigPin, Arduino.HIGH);
-//  java.util.concurrent.TimeUnit.MICROSECONDS.sleep(10);
-
-//  arduino.delayMicroseconds(10);
-//  arduino.digitalWrite(trigPin, Arduino.LOW);
- 
-  // Read the signal from the sensor: a HIGH pulse whose
-  // duration is the time (in microseconds) from the sending
-  // of the ping to the reception of its echo off of an object.
-//  duration = arduino.pulseIn(echoPin, Arduino.HIGH,10000);
-
-if (myPort.available() > 0)
-{
-
-  
-}//end of serial
-  
   
   drawEllipse();
   drawText();  
@@ -116,7 +108,7 @@ void initScreen()
 
 void initSerial()
 {
-  String portName = Serial.list()[0];
+  String portName = Serial.list()[CHANGEME];
   myPort = new Serial(this,portName, 57600);
   
 }// end of initSerial()
@@ -131,7 +123,7 @@ void initSerial()
 
 void initArduino()
 {
-  arduino = new Arduino(this , Arduino.list()[0], 57600); 
+  arduino = new Arduino(this , Arduino.list()[CHANGEME], 57600); 
 //  arduino.pinMode(sensor, Arduino.INPUT);
   
 //  arduino.pinMode(trigPin, Arduino.OUTPUT);

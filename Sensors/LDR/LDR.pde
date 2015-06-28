@@ -1,6 +1,21 @@
-// Setup sensor on same ANALOG pin as defined below.
-//run standard Firmata script on arduino FIRST 
-// then run this script to gather data
+/*----------------------------------------------------
+          HARDWARE SETUP
+RED    = 5v
+BLACK  = GND 
+WHITE  = Sensor - Analog pin 0
+
+          SOFTWARE SETUP
+
+1.  open arduino -> file -> examples -> firmata -> StandardFirmata -> upload to arduino
+2.  open processing and click play
+3.  test output and make sure it changes.  If it does not change you will need to change the variable CHANGEME
+    
+
+
+----------------------------------------------------
+*/
+int CHANGEME = 0;  // If no output change this to 1....2...3... in that order.
+
 
 import processing.serial.*;
 import cc.arduino.*;
@@ -63,7 +78,7 @@ void initScreen()
 
 void initArduino()
 {
-  arduino = new Arduino(this , Arduino.list()[0], 57600); 
+  arduino = new Arduino(this , Arduino.list()[CHANGEME], 57600); 
   arduino.pinMode(sensor, Arduino.INPUT);
 }// end of initArduino
 

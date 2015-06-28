@@ -1,5 +1,8 @@
 #define trigPin 2
 #define echoPin 4
+
+//plug green wire into digital pin 2
+// plug white wire into digital pin 4
  
 void setup() {
   Serial.begin (57600);
