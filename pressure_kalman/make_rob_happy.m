@@ -17,7 +17,7 @@ fclose(fid);
 
 %% plot the relative height
 time = (0:1:length(col1)-1);
-plot(time,m(:,5));
+plot(time,col1);
 
 
 %% kalman filter area
@@ -45,16 +45,13 @@ P = Ex; % estimate of initial Quail position variance (covariance matrix)
 
 %%initize result variables
 % Initialize for speed
-Q_loc = []; % ACTUAL Quail flight path
-vel = []; % ACTUAL Quail velocity
-Q_loc_meas = m(:,5); % Quail path that the Ninja sees
+Q_loc_meas = col1; % Quail path that the Ninja sees
 
 %%Do kalman filtering
 %initize estimation variables
 Q_loc_estimate = []; %  Quail position estimate
 vel_estimate = []; % Quail velocity estimate
 acc_estimate = []; % Quail ackbar estimate
-Q= [0; 0]; % re-initized state
 P_estimate = P;
 P_mag_estimate = [];
 predic_state = [];
@@ -62,7 +59,7 @@ predic_var = [];
 for t = 1:length(col1)
     % Predict next state of the quail with the last state and predicted motion.
     Q_estimate = A * Q_estimate + B * u;
-    predic_state = [predic_state; Q_estimate(1)] ;
+%    predic_state = [predic_state; Q_estimate(1)] ;
     %predict next covariance
     P = A * P * A' + Ex;
     predic_var = [predic_var; P] ;
@@ -84,7 +81,7 @@ end
 figure(2);
 tt = 0 : dt : (duration*dt);
 plot(time,Q_loc_meas,'-k.', time,Q_loc_estimate,'-g.');
-axis([0 5000 -1 3.5])
+axis([0 length(time) 95 105])
 
 figure(3);
 clf
@@ -92,7 +89,7 @@ subplot(3,1,1)
 hold on
 tt = 0 : dt : (duration*dt);
 plot(time,Q_loc_estimate,'-k.');
-axis([0 5000 -1 3.5])
+axis([0 5000 90 120])
 subplot(3,1,2)
 hold on
 tt = 0 : dt : (duration*dt);
