@@ -214,7 +214,7 @@ void loop(void)
     
     // Kalman Gain
     //K = P*C'*inv(C*P*C'+Ez);
-    Matrix.Transpose((float*)C,1, 3, (float
+//    Matrix.Transpose((float*)C,1, 3, (float
     
     
     // Update the state estimate.

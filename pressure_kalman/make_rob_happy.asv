@@ -29,9 +29,7 @@ fclose(fid);
 
 %define the meta-variables (ie how long and often we will sample)
 duration = length(c1) -1;
-%dt =  sum(m(:,1)) / ((length(c1) -1)*1000); %time was in millis()
-
-dt = mean( diff( m(:,1) ) );
+dt =  sum(m(:,2)) / ((length(c1) -1)*1000); %time was in millis()
 
 %%Define update equations (Coefficent matrices)
 
@@ -115,7 +113,7 @@ c5_norm             = ( c5  ) ./ ( max(c5) );
 
 plot(y,Q_loc_meas_norm,'-k.', y,Q_loc_estimate_norm,'-m.');
 
-plot(y, c4_norm, '-r.', y, c5_norm, '-b.');
+%plot(y, c4_norm, '-r.', y, c5_norm, '-b.');
 %axis([0 length(time) 95 105])
 
 figure(3);
@@ -124,17 +122,17 @@ subplot(3,1,1)
 hold on
 tt = 0 : dt : (duration*dt);
 plot(y,Q_loc_estimate,'-k.');
-axis([20 120 60 95])
+axis([80 120 60 95])
 subplot(3,1,2)
 hold on
 tt = 0 : dt : (duration*dt);
 plot(y,vel_estimate,'-k.');
-axis([20 120 -10 10])
+axis([80 120 -3 1])
 subplot(3,1,3)
 hold on
 tt = 0 : dt : (duration*dt);
 plot(y,acc_estimate,'-k.');
-axis([20 120 -5 5])
+axis([80 120 -1 2])
 
 % %plot the evolution of the distributions
 % figure(3);clf
