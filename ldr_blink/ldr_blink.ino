@@ -37,7 +37,7 @@ void loop()
   int sensor = analogRead(ldr);
 
   // then we need to see if it has changed, but the sesnor is noisy, so it doesnt always read the same value, it flucuates, so we are going to set a "threshold"
-  if( (ldr_initial - sensor ) > 20 )
+  if( (sensor - ldr_initial ) > 20 )
   {
     //in here the sensor has reached the threshold so lets turn the LED on
     digitalWrite(led, HIGH);

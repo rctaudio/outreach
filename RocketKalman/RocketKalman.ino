@@ -97,9 +97,9 @@ float sdevMeasurement = .05;
 #include <Wire.h>
 #include <SPI.h>
 #include <SD.h>
-#include <MatrixMath.h>
-#include <Adafruit_Sensor.h>
-#include <Adafruit_BMP085_U.h>
+#include "MatrixMath.h"
+#include "Adafruit_Sensor.h"
+#include "Adafruit_BMP085_U.h"
 
 
 
