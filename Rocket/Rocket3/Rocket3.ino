@@ -10,8 +10,8 @@
 
 //put all the includes here, organized
 //SD Card
-#include <Fat16.h>
-#include <Fat16util.h> // use functions to print strings from flash memory
+#include "Fat16.h"
+#include "Fat16util.h" // use functions to print strings from flash memory
 
 
 
