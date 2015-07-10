@@ -3,7 +3,7 @@
 clc;
 clear all;
 
-filename = 'test_data/bridge_toss_2.csv';
+filename = 'test_data/failed.csv';
 m = csvread(filename, 1);
 c1 = m(250:end,1);
 c2 = m(250:end,2);

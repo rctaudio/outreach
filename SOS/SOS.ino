@@ -2,26 +2,54 @@
 // these includes allow us to use someone elses code.  This way we dont have to figure out every little detail
 // , instead we can focus on what we want to do.
 
-#include <Wire.h>
-#include <SPI.h>
-#include <SD.h>
-#include "MatrixMath.h"
-#include "Adafruit_Sensor.h"
-#include "Adafruit_BMP085_U.h"
-#include <Servo.h>
 
-/* Assign a unique ID to the sensors */
-Adafruit_BMP085_Unified       bmp   = Adafruit_BMP085_Unified(18001);
+/***********************************************************************
+*  
+*                       GLOBAL STUFFS 
+*    
+*  This is where the things go that you need access to from EVERY
+*  PART of your code.  This would be your "Cell phone" that you take with
+*  you everywhere that has all the info you need
+*/
+/***********************************************************************/
 
-/* Update this with the correct SLP for accurate altitude measurements */
-float seaLevelPressure = SENSORS_PRESSURE_SEALEVELHPA;
+#include <Wire.h>                   // used to communicate with the IMU
+#include <SPI.h>                    // used to communicate with the sd card 
+#include <SD.h>                     // tells the arduino how to use the sd card
+#include "MatrixMath.h"             // maths to make graphs pretty
+#include "Adafruit_Sensor.h"        // tells the arduino how to use a sensor (general)
+#include "Adafruit_BMP085_U.h"      // tells the arduino how to use the pressure sensor (specific)
+#include <Servo.h>                  // tells the arduino how to use a servo
 
-//variables for hardware : sd card reader and leds
+//IMU Stuffs
+Adafruit_BMP085_Unified   bmp   = Adafruit_BMP085_Unified(18001); // assign a unique ID to the sensor
+float seaLevelPressure = SENSORS_PRESSURE_SEALEVELHPA;            // sets a reference value for sea level to calculate our height.
 
+// LED Stuffs.  "const" means constant, this keyword will prevent you from accidently
+const int ledBlue  = 8;       // reassigning this variable in your code
+const int ledGreen = 9;     
+const int ledRed   = 10;
+
+// SD card Stuffs: 
 const int chipSelect = 4;
-const int ledBlue = 5;
-const int ledGreen = 6;
-const int ledRed = 7;
+
+// Servo Stuffs
+Servo servoParachute;
+const int servo = 7;
+
+// Logic Stuffs, These are things used to figure out WHEN to deploy the parachute
+float altInitial    = 0;         // set a reference height of where the rocket is BEFORE it is launched
+float altCurrent    = 0;
+float velocity      = 0;
+float accel         = 0;
+int launched        = 0;         // this is our "flag" that will tell the arduino it is moving
+int parachuteDeploy = 0;         // this is our "flag" that will tell the arduino its time to SLOW DOWN 
+int average         = 100;       // used to average the altInitial reading, to provide a good starting point
+long launchTime     = 0;         // time that we launched
+long altDeployTime  = 0;
+long failSafe       = 0;
+float altMax        = 0;
+
 
 //variables used for the maths that make our graphs pretty 
 // we are using a kalman filter which is a REALLY awesome filter
@@ -43,34 +71,28 @@ float temp11[1][1];
 float sdevProcess = 0.005;
 float sdevMeasurement = .05;
 
-/**************************************************************************/
-/*!
-    @brief  Initialises all the sensors used by this example
-*/
-/**************************************************************************/
-void initSensors()
-{
-  if(!bmp.begin(BMP085_MODE_ULTRALOWPOWER))
-  {
-    /* There was a problem detecting the BMP180 ... check your connections */
-    Serial.println("Ooops, no BMP180 detected ... Check your wiring!");
-    while(1);
-  } // end of if
-} // end of initSensors()
+//--------------------------END OF GLOBAL STUFFS--------------------
+
 
 /**************************************************************************/
 /*!
+                      void setup
+       this is where we put all our code that needs to be SETUP first.  
+       If we need to INITALIZE any PINS, we set that here.  If we need to
+       provide VISUAL feedback that our system is running correctly, we set that here.
+       If we want to use the SERIAL terminal to see the data on the arduino, we set that here
+       ... If we want to do something ONCE we put it in here.
 
+       Do not declare varaibles in here, or else they will disappear after the 
+       brackets close.
 */
 /**************************************************************************/
 void setup(void)
 {
-  // tell the arduion that we want to use these pins as outputs, i.e. as switches
+  // LED Stuffs
   pinMode(ledBlue, OUTPUT);
   pinMode(ledGreen, OUTPUT);
   pinMode(ledRed, OUTPUT);
-
-  //flash all the LED's to give us visual feedback that the system is booting up
   digitalWrite(ledBlue, HIGH);  
   digitalWrite(ledGreen, HIGH);  
   digitalWrite(ledRed, HIGH);  
@@ -82,24 +104,35 @@ void setup(void)
   digitalWrite(ledBlue, HIGH);  
   digitalWrite(ledGreen, HIGH);  
   digitalWrite(ledRed, HIGH);
+
+  //Servo Stuffs
+  servoParachute.attach(servo);
+  servoParachute.write(120);
   
   //enable the Serial(magnifying glass button) to help us debug our program if needed
   Serial.begin(115200);
   Serial.println(F("Surfing on a rocket")); Serial.println("");
   
-  /* Initialise the sensors */
+  // Sensor setup Stuffs
   initSensors();
   sensors_event_t bmp_event;
-  bmp.getEvent(&bmp_event);
-  
-  /* Get ambient temperature in C */
-  float temperature;
-  bmp.getTemperature(&temperature);
-  
-  /* Convert atmospheric pressure, SLP and temp to altitude    */
-  X_old[0][0] = bmp.pressureToAltitude(seaLevelPressure, bmp_event.pressure, temperature);
-                                        
-  //initalize some needed values for our Kalman filter
+  int counter = 0;
+  while(true)
+  {
+    bmp.getEvent(&bmp_event);
+    if(bmp_event.pressure)
+    {
+      float temperature;
+      bmp.getTemperature(&temperature); // get the ambient temperature as a reference
+      altInitial += bmp.pressureToAltitude(seaLevelPressure, bmp_event.pressure, temperature);
+      counter++;
+      if (counter > average) break;     
+    }// end of if(bmp_event.pressure)
+  }// end of while(true)
+  altInitial /= average;
+
+  //Kalman filter maths
+  X_old[0][0] = altInitial;
   t_old = millis()/1000.0;
   X_old[1][0] = 0;
   X_old[2][0] = 0;
@@ -107,6 +140,8 @@ void setup(void)
   P[1][0] = 0; P[1][1] = 1000; P[1][2] = 0; 
   P[2][0] = 0; P[2][1] = 0; P[2][2] = 1000;
   
+  // Sd card Stuffs
+  pinMode(10,OUTPUT); // set the default chipselect pin to output, for stability
   Serial.print("Initializing SD card...");
   // see if the card is present and can be initialized:
   if (!SD.begin(chipSelect)) 
@@ -115,17 +150,20 @@ void setup(void)
     // don't do anything more:
     return;
   } // end of if
-  Serial.println("card initialized.");
-  
+  Serial.println("card initialized.");  
 } // end of setup()
 
-/**************************************************************************/
-/*!
-    @brief  Constantly check the roll/pitch/heading/altitude/temperature
-*/
-/**************************************************************************/
+//---------------------end of setups-----------------------
 
-
+/****************************************************************
+*             
+*                          void loop
+*      This is our "main" program.  This is what will be ran
+*      over and over again.
+* 
+* 
+* 
+/*****************************************************************/
 
 void loop(void)
 {
@@ -142,8 +180,7 @@ void loop(void)
     
     /* Convert atmospheric pressure, SLP and temp to altitude    */
     Z[0][0] = bmp.pressureToAltitude(seaLevelPressure, bmp_event.pressure, temperature);
-    
-    
+        
     //more maths involved with the Kalman filter stuffs
     dt = millis()/1000.0-t_old;
     t_old = millis()/1000.0;
@@ -162,19 +199,13 @@ void loop(void)
     Q[2][1] = pow(dt,3)/2.0*pow(sdevProcess,2);
     Q[2][2] = pow(dt,2)/1.0*pow(sdevProcess,2);
 
-    //more Maths
     //Predict
     Matrix.Multiply((float*)F,(float*)X_old,3,3,1,(float*)X_prior); // Predict State
-
-    //Matrix.Print((float*)P,3,3,"P initial:");
     Matrix.Transpose((float*)F,3,3,(float*)temp33_1); // Predict Covar
-    //Matrix.Print((float*)temp33_1,3,3,"F':");
     Matrix.Multiply((float*)P,(float*)temp33_1,3,3,3,(float*)temp33_2);
-    //Matrix.Print((float*)temp33_2,3,3,"PF':");
     Matrix.Multiply((float*)F,(float*)temp33_2,3,3,3,(float*)temp33_1);
-    //Matrix.Print((float*)temp33_1,3,3,"FPF':");
     Matrix.Add((float*)temp33_1,(float*)Q,3,3,(float*)P);
-    //Matrix.Print((float*)P,3,3,"P Priori:");
+    
     
     //Even more maths
     //Update
@@ -197,6 +228,38 @@ void loop(void)
     Matrix.Print((float*)X_est,3,1,"X_est:");
 
     Matrix.Copy((float*)X_est,3,1,(float*)X_old);
+
+
+    //----------------------logics go here, time to set flags for different events
+  
+    //have we launched? if my height has changed by more than 5 meters, then I think we have.
+    // i'm also using an absolute value since there is a pressure spike at launch
+    if ( ( ( altInitial - X_est[0][0] ) > 5 ) || ( altInitial - X_est[0][0] ) < 5  )
+    {
+      launched = 1;
+      launchTime = millis()/1000.0;    
+    } // end of if we have launched
+
+    // are we at the apex of our parabola?  if so then maybe deploy parachut
+    if ( X_est[0][0] > altMax) altMax = X_est[0][0];
+    //if we have launched, AND our current position is higher than our start, AND we are more than 5 meters away from our largest height.
+    if ( ( launched > 0 ) &&  ( X_est[0][0] > altInitial ) && ( ( altMax - X_est[0][0] ) > 5 ) )
+    {
+      parachuteDeploy = 1;
+      altDeployTime = millis()/1000.0;
+    } // deploy parachute becuase we are on the downslope of our position parabola
+
+    // what about time?
+    // past launches have taken about 3-4 seconds to hit the apex before coming down so lets shoot for 4.5 seconds
+    if ( ( launched > 0 ) && ( ( ( millis() / 1000.0 ) - launchTime ) > 4.5 ) )
+    {
+      parachuteDeploy = 1;
+      failSafe = millis()/1000.0;
+    } // end of time failsafe
+
+    // come back and add flags for velocity and acceleration, if wanted
+ 
+    
         
     // LOGGING to the sd card now, so far we have made variables
     // to store data in and now we will write those variables to 
@@ -218,6 +281,12 @@ void loop(void)
       dataFile.print(",");
       dataFile.print(X_est[2][0]);
       dataFile.println(",");
+      dataFile.print(launchTime);
+      dataFile.println(",");
+      dataFile.print(failSafe);
+      dataFile.println(",");
+      dataFile.print(altDeployTime);
+      dataFile.println(",");
       dataFile.close();
     } // end of if datafile
     // if the file isn't open, pop up an error:
@@ -227,6 +296,49 @@ void loop(void)
       Serial.println("error opening datalog.txt");
     } // end of else
   } // end of if bmp_pressure
-  
+
+  //---------------time to do some stuffs with the logics made above
+
+  if (launched == 0) 
+    digitalWrite(9,LOW);
+  else
+    digitalWrite(9,HIGH);
+
+  if ( parachuteDeploy == 1)
+  {
+    servoParachute.write(0);
+    digitalWrite(8,HIGH); 
+  } // end of if parachutedeploy
+  else
+  {
+    servoParachute.write(120);
+    digitalWrite(8,HIGH);
+  }// end of else
   delay(10);
 } // end of loop
+
+//------------------------------------end of main loop---------------------------
+
+
+
+
+/**************************************************************************
+
+                     Other functions
+    This is where we put other "functions" we will use. we usually use functions to make 
+    code more readable, and easier to understand.  Instead of having a big block of code
+    that has all the details of making coffee, we could make a function void coffee() that
+    has all the code so that we just have "call" in our main program.
+
+
+/**************************************************************************/
+void initSensors()
+{
+  if(!bmp.begin(BMP085_MODE_ULTRALOWPOWER))
+  {
+    /* There was a problem detecting the BMP180 ... check your connections */
+    Serial.println("Ooops, no BMP180 detected ... Check your wiring!");
+    while(1);
+  } // end of if
+} // end of initSensors()
+
