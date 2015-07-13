@@ -26,29 +26,30 @@ Adafruit_BMP085_Unified   bmp   = Adafruit_BMP085_Unified(18001); // assign a un
 float seaLevelPressure = SENSORS_PRESSURE_SEALEVELHPA;            // sets a reference value for sea level to calculate our height.
 
 // LED Stuffs.  "const" means constant, this keyword will prevent you from accidently
-const int ledBlue  = 8;       // reassigning this variable in your code
+const int ledBlue  = 10;       // reassigning this variable in your code
+const int ledRed   = 8;
 const int ledGreen = 9;     
-const int ledRed   = 10;
+
 
 // SD card Stuffs: 
 const int chipSelect = 4;
 
 // Servo Stuffs
 Servo servoParachute;
-const int servo = 7;
+const int servo = 6;
 
 // Logic Stuffs, These are things used to figure out WHEN to deploy the parachute
-float altInitial    = 0;         // set a reference height of where the rocket is BEFORE it is launched
-float altCurrent    = 0;
-float velocity      = 0;
-float accel         = 0;
-int launched        = 0;         // this is our "flag" that will tell the arduino it is moving
-int parachuteDeploy = 0;         // this is our "flag" that will tell the arduino its time to SLOW DOWN 
-int average         = 100;       // used to average the altInitial reading, to provide a good starting point
-long launchTime     = 0;         // time that we launched
-long altDeployTime  = 0;
-long failSafe       = 0;
-float altMax        = 0;
+float altInitial     = 0;         // set a reference height of where the rocket is BEFORE it is launched
+float altCurrent     = 0;
+float velocity       = 0;
+float accel          = 0;
+int launched         = 0;         // this is our "flag" that will tell the arduino it is moving
+int parachuteDeploy  = 0;         // this is our "flag" that will tell the arduino its time to SLOW DOWN 
+int average          = 100;       // used to average the altInitial reading, to provide a good starting point
+float launchTime     = 0.0;         // time that we launched
+float altDeployTime  = 0.0;
+float failSafe       = 0.0;
+float altMax         = 0.0;
 
 
 //variables used for the maths that make our graphs pretty 
@@ -230,11 +231,11 @@ void loop(void)
     Matrix.Copy((float*)X_est,3,1,(float*)X_old);
 
 
-    //----------------------logics go here, time to set flags for different events
+    //--------------------------------------------logics go here----------------------------------------
   
     //have we launched? if my height has changed by more than 5 meters, then I think we have.
     // i'm also using an absolute value since there is a pressure spike at launch
-    if ( ( ( altInitial - X_est[0][0] ) > 5 ) || ( altInitial - X_est[0][0] ) < 5  )
+    if ( ( ( ( altInitial - X_est[0][0] ) > 5 ) || ( ( altInitial - X_est[0][0] ) < -5 ) ) && ( launched != 1 )  )
     {
       launched = 1;
       launchTime = millis()/1000.0;    
@@ -242,8 +243,9 @@ void loop(void)
 
     // are we at the apex of our parabola?  if so then maybe deploy parachut
     if ( X_est[0][0] > altMax) altMax = X_est[0][0];
-    //if we have launched, AND our current position is higher than our start, AND we are more than 5 meters away from our largest height.
-    if ( ( launched > 0 ) &&  ( X_est[0][0] > altInitial ) && ( ( altMax - X_est[0][0] ) > 5 ) )
+    //if we have launched, AND our current position is higher than our start, AND we are more than 5 meters away from our largest height
+    // AND alt deployTime has NOT happened yet
+    if ( ( launched > 0 ) &&  ( X_est[0][0] > altInitial ) && ( ( altMax - X_est[0][0] ) > 5 ) && ( altDeployTime < 0.5 ) )
     {
       parachuteDeploy = 1;
       altDeployTime = millis()/1000.0;
@@ -259,7 +261,9 @@ void loop(void)
 
     // come back and add flags for velocity and acceleration, if wanted
  
-    
+    //-----------------------------------------end of logics---------------------------------------
+
+    //----------------------------------------sd card logging---------------------------------------
         
     // LOGGING to the sd card now, so far we have made variables
     // to store data in and now we will write those variables to 
@@ -270,7 +274,7 @@ void loop(void)
     // if the file is available, write to it:
     if (dataFile) 
     {
-      digitalWrite(ledBlue, LOW);  digitalWrite(ledGreen, LOW);  digitalWrite(ledRed, LOW);
+      if(launched != 1) digitalWrite(ledGreen, LOW);
       dataFile.print(millis()/1000.0);
       dataFile.print(",");
       dataFile.print(Z[0][0]);
@@ -280,41 +284,51 @@ void loop(void)
       dataFile.print(X_est[1][0]);
       dataFile.print(",");
       dataFile.print(X_est[2][0]);
-      dataFile.println(",");
+      dataFile.print(",");
       dataFile.print(launchTime);
-      dataFile.println(",");
+      dataFile.print(",");
       dataFile.print(failSafe);
-      dataFile.println(",");
+      dataFile.print(",");
       dataFile.print(altDeployTime);
-      dataFile.println(",");
+      dataFile.print(",");
+      dataFile.println(launched);
       dataFile.close();
     } // end of if datafile
     // if the file isn't open, pop up an error:
     else 
     {
-      digitalWrite(ledBlue, HIGH);  digitalWrite(ledGreen, HIGH);  digitalWrite(ledRed, HIGH);
+      digitalWrite(ledBlue, HIGH);
+      digitalWrite(ledGreen, HIGH);
+      digitalWrite(ledRed, HIGH);
       Serial.println("error opening datalog.txt");
     } // end of else
   } // end of if bmp_pressure
 
-  //---------------time to do some stuffs with the logics made above
+  //---------------------end of sd logging------------------------
 
-  if (launched == 0) 
-    digitalWrite(9,LOW);
+  //---------------time to do some stuffs with the logics made above---------------------
+
+  if (launched == 1) 
+  {
+    digitalWrite(ledRed,LOW);
+    digitalWrite(ledGreen, HIGH);
+  } // end of if
   else
-    digitalWrite(9,HIGH);
+    digitalWrite(ledRed,HIGH);
 
   if ( parachuteDeploy == 1)
   {
     servoParachute.write(0);
-    digitalWrite(8,HIGH); 
+    digitalWrite(ledBlue,LOW); 
   } // end of if parachutedeploy
   else
   {
     servoParachute.write(120);
-    digitalWrite(8,HIGH);
+    digitalWrite(ledBlue,HIGH);
   }// end of else
   delay(10);
+
+  //----------------------end of time to do stuff with logics------------------------
 } // end of loop
 
 //------------------------------------end of main loop---------------------------
