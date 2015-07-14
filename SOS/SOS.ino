@@ -21,8 +21,7 @@
 #include "Adafruit_BMP085_U.h"      // tells the arduino how to use the pressure sensor (specific)
 #include <Servo.h>                  // tells the arduino how to use a servo
 
-//IMU Stuffs
-Adafruit_BMP085_Unified   bmp   = Adafruit_BMP085_Unified(18001); // assign a unique ID to the sensor
+//IMU StuffsAdafruit_BMP085_Unified   bmp   = Adafruit_BMP085_Unified(18001); // assign a unique ID to the sensor
 float seaLevelPressure = SENSORS_PRESSURE_SEALEVELHPA;            // sets a reference value for sea level to calculate our height.
 
 // LED Stuffs.  "const" means constant, this keyword will prevent you from accidently
