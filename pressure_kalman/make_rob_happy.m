@@ -3,13 +3,13 @@
 clc;
 clear all;
 
-filename = 'test_data/failed.csv';
+filename = 'test_data/rocket1_header.csv';
 m = csvread(filename, 1);
-c1 = m(250:end,1);
-c2 = m(250:end,2);
-c3 = m(250:end,3);
-c4 = m(250:end,4);
-c5 = m(250:end,5);
+c1 = m(:,1);
+c2 = m(:,2);
+c3 = m(:,3);
+c4 = m(:,4);
+c5 = m(:,5);
 time = (0:1:length(c1)-1);
 
 %gather header names
@@ -41,13 +41,13 @@ C = [1 0 0];                            %measurement matrix: the expected measur
 
 %%define main variables
 
-u = 0; %acceleration magnitude
-Q = [0;0;0]; %initalized state of the sensor [position; velocity; acceleration]
-Q_estimate = Q; %x_estimate of initial location of where the sensor is ( what we are updating)
-Sensor_pressure_noise_mag = .005; %process noise: the variability in how fast the Quail is speeding up (stdv of acceleration: meters/sec^2)
-arduino_noise_mag = .05;  %measurement noise: How mask-blinded is the Ninja (stdv of location, in meters)
-Ez = arduino_noise_mag^2;% Ez convert the measurement noise (stdv) into covariance matrix
-Ex = Sensor_pressure_noise_mag^2 * [(dt^6)/9 (dt^5)/6 (dt^4)/3; (dt^5)/6 (dt^4)/4 (dt^3)/2; (dt^4)/3 (dt^3)/3 (dt^2)/1]; % Ex convert the process noise (stdv) into covariance matrix
+u = 0;                                  %acceleration magnitude
+Q = [0;0;0];                            %initalized state of the sensor [position; velocity; acceleration]
+Q_estimate = Q;                         %x_estimate of initial location of where the sensor is ( what we are updating)
+noise_process = .02;       %process noise: the variability in how fast the Quail is speeding up (stdv of acceleration: meters/sec^2)
+noise_measurement = .009;                %measurement noise: How mask-blinded is the Ninja (stdv of location, in meters)
+Ez = noise_measurement^2;               % Ez convert the measurement noise (stdv) into covariance matrix
+Ex = noise_process^2 * [(dt^6)/9 (dt^5)/6 (dt^4)/3; (dt^5)/6 (dt^4)/4 (dt^3)/2; (dt^4)/3 (dt^3)/3 (dt^2)/1]; % Ex convert the process noise (stdv) into covariance matrix
 P = [1000    0    0;
      0    1000    0;
      0    0    1000]; % estimate of initial Quail position variance (covariance matrix)
@@ -93,48 +93,69 @@ clf;
 tt = 0 : dt : (duration*dt);
 y = time;
 hold on
+
+%-----------plot raw values---------------------------
 %plot(y,Q_loc_meas,'-k.', y,Q_loc_estimate,'-m.');
-% 
+
+% make the values more pronounced for the flags
+for k = 6:9
+    m(:,k) = m(:,k) .* 5;
+end
+m(:,9) = m(:,9) .*30;
+
+for k = 1:(length(header))
+    p(k) = plot(y, m(:,k), 'DisplayName', header{k});
+    title(header{k});
+    
+end
+p(length(p) +1) = plot(y,Q_loc_estimate, '-m.', 'DisplayName', 'new estimate');
+legend(p);
+
+
+%--------------plot norm values---------------
 % Q_loc_meas_norm = Q_loc_meas./max(Q_loc_meas);
 % Q_loc_estimate_norm = Q_loc_estimate./max(Q_loc_estimate);
 % c4_norm = c4./(max(c4) * 5);
 % c5_norm = c5./(max(c5) * 5);
-a1 = Q_loc_meas;
-b1 = Q_loc_estimate;
+% a1 = Q_loc_meas;
+% b1 = Q_loc_estimate;
 
 % Q_loc_meas_norm     = ( a1 - min(a1) ) ./ ( max(a1) - min(a1) );
 % Q_loc_estimate_norm = ( b1 - min(b1) ) ./ ( max(b1) - min(b1) );
 % c4_norm             = ( c4 - min(c4) ) ./ ( max(c4) - min(c4) );
 % c5_norm             = ( c5 - min(c5) ) ./ ( max(c5) - min(c5) );
-
-Q_loc_meas_norm     = ( a1 - min(a1) ) ./ ( max(a1) );
-Q_loc_estimate_norm = ( b1 - min(b1) ) ./ ( max(b1) );
-c4_norm             = ( c4  ) ./ ( max(c4) );
-c5_norm             = ( c5  ) ./ ( max(c5) );
-
-
-plot(y,Q_loc_meas_norm,'-k.', y,Q_loc_estimate_norm,'-m.');
-
-plot(y, c4_norm, '-r.', y, c5_norm, '-b.');
+% 
+% Q_loc_meas_norm     = ( a1 - min(a1) ) ./ ( max(a1) );
+% Q_loc_estimate_norm = ( b1 - min(b1) ) ./ ( max(b1) );
+% c4_norm             = ( c4  ) ./ ( max(c4) );
+% c5_norm             = ( c5  ) ./ ( max(c5) );
+% 
+% 
+% plot(y,Q_loc_meas_norm,'-k.', y,Q_loc_estimate_norm,'-m.');
+% 
+% plot(y, c4_norm, '-r.', y, c5_norm, '-b.');
 %axis([0 length(time) 95 105])
 
-figure(3);
-clf
-subplot(3,1,1)
-hold on
-tt = 0 : dt : (duration*dt);
-plot(y,Q_loc_estimate,'-k.');
-axis([20 120 60 95])
-subplot(3,1,2)
-hold on
-tt = 0 : dt : (duration*dt);
-plot(y,vel_estimate,'-k.');
-axis([20 120 -10 10])
-subplot(3,1,3)
-hold on
-tt = 0 : dt : (duration*dt);
-plot(y,acc_estimate,'-k.');
-axis([20 120 -5 5])
+
+%-----------plot position, velocity, accel--------------------
+% 
+% figure(3);
+% clf
+% subplot(3,1,1)
+% hold on
+% tt = 0 : dt : (duration*dt);
+% plot(y,Q_loc_estimate,'-k.');
+% axis([20 120 60 95])
+% subplot(3,1,2)
+% hold on
+% tt = 0 : dt : (duration*dt);
+% plot(y,vel_estimate,'-k.');
+% axis([20 120 -10 10])
+% subplot(3,1,3)
+% hold on
+% tt = 0 : dt : (duration*dt);
+% plot(y,acc_estimate,'-k.');
+% axis([20 120 -5 5])
 
 % %plot the evolution of the distributions
 % figure(3);clf
@@ -345,10 +366,10 @@ C = [1 0]; % measurement matrix: the expected measurement given the predicted st
 u = 1.5; % define acceleration magnitude
 Q= [0; 0]; %initized state--it has two components: [position; velocity] of the Quail
 Q_estimate = Q;  %x_estimate of initial location estimation of where the Quail is (what we are updating)
-Sensor_pressure_noise_mag = 0.05; %process noise: the variability in how fast the Quail is speeding up (stdv of acceleration: meters/sec^2)
-arduino_noise_mag = 10;  %measurement noise: How mask-blinded is the Ninja (stdv of location, in meters)
-Ez = arduino_noise_mag^2;% Ez convert the measurement noise (stdv) into covariance matrix
-Ex = Sensor_pressure_noise_mag^2 * [dt^4/4 dt^3/2; dt^3/2 dt^2]; % Ex convert the process noise (stdv) into covariance matrix
+noise_process = 0.05; %process noise: the variability in how fast the Quail is speeding up (stdv of acceleration: meters/sec^2)
+noise_measurement = 10;  %measurement noise: How mask-blinded is the Ninja (stdv of location, in meters)
+Ez = noise_measurement^2;% Ez convert the measurement noise (stdv) into covariance matrix
+Ex = noise_process^2 * [dt^4/4 dt^3/2; dt^3/2 dt^2]; % Ex convert the process noise (stdv) into covariance matrix
 P = Ex; % estimate of initial Quail position variance (covariance matrix)
 
 %% initize result variables
@@ -364,10 +385,10 @@ figure(1);clf
 for t = 0 : dt: duration
 
     % Generate the Quail flight
-    QuailAccel_noise = Sensor_pressure_noise_mag * [(dt^2/2)*randn; dt*randn];
+    QuailAccel_noise = noise_process * [(dt^2/2)*randn; dt*randn];
     Q= A * Q+ B * u + QuailAccel_noise;
     % Generate what the Ninja sees
-    NinjaVision_noise = arduino_noise_mag * randn;
+    NinjaVision_noise = noise_measurement * randn;
     y = C * Q+ NinjaVision_noise;
     Q_loc = [Q_loc; Q(1)];
     Q_loc_meas = [Q_loc_meas; y];
@@ -441,7 +462,7 @@ clf
        
     %data measured by the ninja
     mu = Q_loc_meas(T); % mean
-    sigma = arduino_noise_mag; % standard deviation
+    sigma = noise_measurement; % standard deviation
     y = normpdf(x,mu,sigma); % pdf
     y = y/(max(y));
     hl = line(x,y,'Color','k'); % or use hold on and normal plot

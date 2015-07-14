@@ -1,7 +1,5 @@
-
-// these includes allow us to use someone elses code.  This way we dont have to figure out every little detail
-// , instead we can focus on what we want to do.
-
+// process noise     = .02
+// measurement noise = .009
 
 /***********************************************************************
 *  
@@ -13,6 +11,9 @@
 */
 /***********************************************************************/
 
+
+// these includes allow us to use someone elses code.  This way we dont have to figure out every little detail
+// , instead we can focus on what we want to do.
 #include <Wire.h>                   // used to communicate with the IMU
 #include <SPI.h>                    // used to communicate with the sd card 
 #include <SD.h>                     // tells the arduino how to use the sd card
@@ -68,8 +69,8 @@ float temp33_1[3][3];
 float temp33_2[3][3];
 float temp31[3][1];
 float temp11[1][1];
-float sdevProcess = 0.005;
-float sdevMeasurement = .05;
+float sdevProcess = 0.02;
+float sdevMeasurement = .009;
 
 //--------------------------END OF GLOBAL STUFFS--------------------
 
@@ -181,7 +182,8 @@ void loop(void)
     /* Convert atmospheric pressure, SLP and temp to altitude    */
     Z[0][0] = bmp.pressureToAltitude(seaLevelPressure, bmp_event.pressure, temperature);
         
-    //more maths involved with the Kalman filter stuffs
+    //----------------------kalman filter / pretty maths---------------------------------
+    //REALLY COOL STUFF, but higher level maths/ probability dont have to understand it.
     dt = millis()/1000.0-t_old;
     t_old = millis()/1000.0;
     
@@ -229,12 +231,14 @@ void loop(void)
 
     Matrix.Copy((float*)X_est,3,1,(float*)X_old);
 
+    //---------------------end of kalman filter / pretty maths
+
 
     //--------------------------------------------logics go here----------------------------------------
   
     //have we launched? if my height has changed by more than 5 meters, then I think we have.
     // i'm also using an absolute value since there is a pressure spike at launch
-    if ( ( ( ( altInitial - X_est[0][0] ) > 5 ) || ( ( altInitial - X_est[0][0] ) < -5 ) ) && ( launched != 1 )  )
+    if ( ( ( ( altInitial - X_est[0][0] ) > 4 ) || ( ( altInitial - X_est[0][0] ) < -4 ) ) && ( launched != 1 )  )
     {
       launched = 1;
       launchTime = millis()/1000.0;    
@@ -244,7 +248,7 @@ void loop(void)
     if ( X_est[0][0] > altMax) altMax = X_est[0][0];
     //if we have launched, AND our current position is higher than our start, AND we are more than 5 meters away from our largest height
     // AND alt deployTime has NOT happened yet
-    if ( ( launched > 0 ) &&  ( X_est[0][0] > altInitial ) && ( ( altMax - X_est[0][0] ) > 5 ) && ( altDeployTime < 0.5 ) )
+    if ( ( launched > 0 ) &&  ( X_est[0][0] > altInitial ) && ( ( altMax - X_est[0][0] ) > 4 ) && ( altDeployTime < 0.5 ) )
     {
       parachuteDeploy = 1;
       altDeployTime = millis()/1000.0;

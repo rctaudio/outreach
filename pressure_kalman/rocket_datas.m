@@ -3,7 +3,7 @@
 clc;
 clear all;
 
-filename = 'test_data/Failed.csv';
+filename = 'test_data/rocket1_header.csv';
 m = csvread(filename, 1);
 c1 = m(1:end,1);
 c2 = m(1:end,2);
@@ -148,7 +148,7 @@ tt = 0 : dt : (duration*dt);
 plot(y,acc_estimate,'-k.');
 axis([0 350 -40 80])
 
-SAVEME=[c1,Q_loc_estimate,vel_estimate,acc_estimate]
+SAVEME=[c1,Q_loc_estimate,vel_estimate,acc_estimate];
 
 % %plot the evolution of the distributions
 % figure(3);clf
